@@ -54,7 +54,7 @@ public class JedisSlotBasedConnectionHandler extends JedisClusterConnectionHandl
   }
 
   @Override
-  public Jedis getConnection() {
+  public Jedis doGetConnection() {
     // In antirez's redis-rb-cluster implementation,
     // getRandomConnection always return valid connection (able to
     // ping-pong)
@@ -87,7 +87,7 @@ public class JedisSlotBasedConnectionHandler extends JedisClusterConnectionHandl
   }
 
   @Override
-  public Jedis getConnectionFromSlot(int slot) {
+  public Jedis doGetConnectionFromSlot(int slot) {
     JedisPool connectionPool = cache.getSlotPool(slot);
     if (connectionPool != null) {
       // It can't guaranteed to get valid connection because of node

@@ -170,6 +170,17 @@ public class JedisCluster extends BinaryJedisCluster implements JedisClusterComm
             ssl, sslSocketFactory, sslParameters, hostnameVerifier, hostAndPortMap);
   }
 
+  /**
+   * Select the DB with having the specified zero-based numeric index.
+   *
+   * @param index the index
+   * @return a simple string reply OK
+   */
+  public String select(int index) {
+    this.connectionHandler.setDb(index);
+    return connectionHandler.ok;
+  }
+
   @Override
   public String set(final String key, final String value) {
     return new JedisClusterCommand<String>(connectionHandler, maxAttempts) {

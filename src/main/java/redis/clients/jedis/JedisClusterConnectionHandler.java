@@ -14,6 +14,9 @@ import redis.clients.jedis.exceptions.JedisConnectionException;
 public abstract class JedisClusterConnectionHandler implements Closeable {
   protected final JedisClusterInfoCache cache;
 
+  public final String ok = "OK";
+  private int db;
+
   public JedisClusterConnectionHandler(Set<HostAndPort> nodes, GenericObjectPoolConfig poolConfig,
       int connectionTimeout, int soTimeout, String password) {
     this(nodes, poolConfig, connectionTimeout, soTimeout, password, null);
@@ -45,14 +48,59 @@ public abstract class JedisClusterConnectionHandler implements Closeable {
     initializeSlotsCache(nodes, connectionTimeout, soTimeout, user, password, clientName, ssl, sslSocketFactory, sslParameters, hostnameVerifier);
   }
 
-  abstract Jedis getConnection();
+  public int getDb() {
+    return db;
+  }
 
-  abstract Jedis getConnectionFromSlot(int slot);
+  public void setDb(int db) {
+    this.db = db;
+  }
+
+  private void adjustDb(Jedis jedis) {
+    if (db < 0) {
+      return;
+    }
+
+    int currentDb = jedis.getDB();
+    if (currentDb == db) {
+      return;
+    }
+
+    String replay = jedis.select(db);
+    if (!ok.equalsIgnoreCase(replay)) {
+      String format = String.format("Failed to select db index from [%s] to [%s]!", currentDb, db);
+      try {
+        jedis.close();
+      } catch (Exception exception) {
+        throw new JedisConnectionException(format, exception);
+      }
+      throw new JedisConnectionException(format);
+    }
+  }
+
+  Jedis getConnection() {
+    Jedis jedis = doGetConnection();
+    adjustDb(jedis);
+    return jedis;
+  }
+
+  abstract Jedis doGetConnection();
+
+  Jedis getConnectionFromSlot(int slot) {
+    Jedis jedis = doGetConnectionFromSlot(slot);
+    adjustDb(jedis);
+    return jedis;
+  }
+
+  abstract Jedis doGetConnectionFromSlot(int slot);
 
   public Jedis getConnectionFromNode(HostAndPort node) {
-    return cache.setupNodeIfNotExist(node).getResource();
+    Jedis resource = cache.setupNodeIfNotExist(node).getResource();
+    adjustDb(resource);
+    return resource;
   }
-  
+
+  // handle select db by caller with Jedis obtain from redis.clients.jedis.JedisPool.getResource
   public Map<String, JedisPool> getNodes() {
     return cache.getNodes();
   }
