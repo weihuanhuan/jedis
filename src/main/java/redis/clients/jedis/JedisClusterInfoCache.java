@@ -201,8 +201,14 @@ public class JedisClusterInfoCache {
       JedisPool existingPool = nodes.get(nodeKey);
       if (existingPool != null) return existingPool;
 
+      int defaultDb = 0;
+      if(poolConfig instanceof JedisPoolConfig){
+        JedisPoolConfig cast = JedisPoolConfig.class.cast(poolConfig);
+        defaultDb = cast.getDefaultDb();
+      }
+
       JedisPool nodePool = new JedisPool(poolConfig, node.getHost(), node.getPort(),
-          connectionTimeout, soTimeout, user, password, 0, clientName, 
+          connectionTimeout, soTimeout, user, password, defaultDb, clientName,
           ssl, sslSocketFactory, sslParameters, hostnameVerifier);
       nodes.put(nodeKey, nodePool);
       return nodePool;
