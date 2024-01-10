@@ -25,6 +25,8 @@ import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 public class JedisCluster extends BinaryJedisCluster implements JedisClusterCommands,
     MultiKeyJedisClusterCommands, JedisClusterScriptingCommands {
 
+  protected JedisClusterPool jedisClusterPool = null;
+
   public JedisCluster(HostAndPort node) {
     this(Collections.singleton(node));
   }
@@ -179,6 +181,21 @@ public class JedisCluster extends BinaryJedisCluster implements JedisClusterComm
   public String select(int index) {
     this.connectionHandler.setDb(index);
     return connectionHandler.ok;
+  }
+
+  @Override
+  public void close() {
+    if (jedisClusterPool != null) {
+      // logical close for reuse later
+      JedisClusterPool pool = jedisClusterPool;
+      pool.returnResource(this);
+    } else {
+      super.close();
+    }
+  }
+
+  public void setJedisClusterPool(JedisClusterPool jedisClusterPool) {
+    this.jedisClusterPool = jedisClusterPool;
   }
 
   @Override
