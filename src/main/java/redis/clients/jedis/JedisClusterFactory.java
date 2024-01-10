@@ -66,7 +66,7 @@ class JedisClusterFactory implements PooledObjectFactory<JedisCluster> {
     public JedisClusterFactory(Set<HostAndPort> jedisClusterNode, int connectionTimeout, int soTimeout, int maxAttempts,
                                String password, String clientName, final GenericObjectPoolConfig poolConfig) {
         this(jedisClusterNode, connectionTimeout, soTimeout, maxAttempts,
-                password, null, clientName, poolConfig);
+                null, password, clientName, poolConfig);
     }
 
     public JedisClusterFactory(Set<HostAndPort> jedisClusterNode, int connectionTimeout, int soTimeout, int maxAttempts,
@@ -143,9 +143,23 @@ class JedisClusterFactory implements PooledObjectFactory<JedisCluster> {
         }
     }
 
+    /**
+     * revert to default db when active.
+     *
+     * @see redis.clients.jedis.JedisFactory#activateObject(org.apache.commons.pool2.PooledObject)
+     */
     @Override
     public void activateObject(PooledObject<JedisCluster> pooledJedis) throws Exception {
-        //do nothing
+        JedisCluster jedisCluster = pooledJedis.getObject();
+        if (jedisCluster == null) {
+            return;
+        }
+
+        if (poolConfig instanceof JedisPoolConfig) {
+            JedisPoolConfig cast = JedisPoolConfig.class.cast(poolConfig);
+            int defaultDb = cast.getDefaultDb();
+            jedisCluster.select(defaultDb);
+        }
     }
 
     @Override
